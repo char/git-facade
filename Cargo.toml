@@ -1,0 +1,11 @@
+cargo-features = ["edition"]
+
+[package]
+name = "git-facade"
+version = "0.1.0"
+authors = ["half cambodian hacker man <half-kh-hacker@hackery.site>"]
+edition = "2018"
+
+[dependencies]
+git2 = "0.8"
+toml = "0.4"
