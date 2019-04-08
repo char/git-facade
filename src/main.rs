@@ -23,11 +23,11 @@ fn get_commits_from_repo(repo: &Repository) -> Vec<Commit> {
 }
 
 fn get_latest_date_from_repo(repo: &Repository) -> Option<Time> {
-    let workdir = repo.workdir()?;
+    let workdir = repo.workdir().unwrap();
     let path = workdir.join(&Path::new("latest-update.txt"));
 
     if let Ok(time) = fs::read_to_string(path) {
-        let split: Vec<&str> = time.split(" ").collect();
+        let split: Vec<&str> = time.split_whitespace().collect();
 
         let time64 = split[0].parse::<i64>().unwrap();
         let offset32 = split[1].parse::<i32>().unwrap();
@@ -94,17 +94,18 @@ fn main() {
     let mut latest_date = Time::new(0, 0);
 
     let repo_dir = config["repo"].as_str().unwrap();
-    let repo = match Repository::init(repo_dir) {
+
+    let repo = match Repository::open(repo_dir) {
         Ok(repo) => {
+            if let Some(repo_latest_date) = get_latest_date_from_repo(&repo) {
+                latest_date = repo_latest_date
+            }
+
             repo
         },
         Err(_e) => {
-            match Repository::open(repo_dir) {
+            match Repository::init(repo_dir) {
                 Ok(repo) => {
-                    if let Some(repo_latest_date) = get_latest_date_from_repo(&repo) {
-                        latest_date = repo_latest_date
-                    }
-
                     repo
                 },
                 Err(_e) => {
@@ -127,15 +128,15 @@ fn main() {
             let commit_time = commit.time();
 
             if commit_time >= start_date {
-                add_fake_commit_to_repo(&repo, format!("Façade commit: {}", name).as_str(), &commit);
-            }
+                if commit_time > latest_date {
+                    latest_date = commit_time;
+                    write_latest_date_to_repo(&repo, &latest_date);
+                }
 
-            if commit_time > latest_date {
-                latest_date = commit_time;
+                add_fake_commit_to_repo(&repo, format!("Façade commit: {}", name).as_str(), &commit);
             }
         }
     }
 
-    write_latest_date_to_repo(&repo, &latest_date);
     println!("{}", repo.workdir().unwrap().to_str().unwrap());
 }
